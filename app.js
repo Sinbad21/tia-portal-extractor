@@ -163,8 +163,8 @@ function parsePageData(text) {
 
     let inDataSection = false;
 
-    for (let line of lines) {
-        line = line.trim();
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].trim();
 
         if (!line) continue;
 
@@ -188,10 +188,30 @@ function parsePageData(text) {
         const match1 = line.match(/^(\+[\d.]+)\s+(\S+)\s+(BOOL|BYTE|WORD|DWORD|REAL|INT|DINT|STRING|CHAR|TIME|DATE|ARRAY\[.*?\]|STRUCT|END_STRUCT)(?:\s+(TRUE|FALSE|[\d.eE+-]+|[\d#]+|\S+))?(?:\s+(.*))?$/i);
 
         if (match1) {
+            let dataType = match1[3];
+
+            // Check if it's an ARRAY type
+            if (dataType.match(/^ARRAY\[.*?\]$/i)) {
+                // Look at the next non-empty line to get the element type
+                for (let j = i + 1; j < lines.length; j++) {
+                    const nextLine = lines[j].trim();
+                    if (!nextLine) continue;
+
+                    // Check if next line contains the element type
+                    const elementTypeMatch = nextLine.match(/^\+[\d.]+\s+(\S+)\s+(BOOL|BYTE|WORD|DWORD|REAL|INT|DINT|STRING|CHAR)/i);
+                    if (elementTypeMatch) {
+                        dataType = `${dataType} of ${elementTypeMatch[2].toUpperCase()}`;
+                        break;
+                    }
+                    // If next line doesn't match expected pattern, stop looking
+                    break;
+                }
+            }
+
             extractedData.push({
                 Address: match1[1],
                 Name: match1[2],
-                Type: match1[3],
+                Type: dataType,
                 InitialValue: match1[4] || '',
                 Comment: (match1[5] || '').trim()
             });
